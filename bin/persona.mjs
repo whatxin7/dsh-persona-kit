@@ -12,9 +12,22 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { GEN1_ROLE_LINE_RE, parseRoleSections, roleCharStats, roleSectionReport, selectRoleText } from '../src/role-card.js';
 import { appendStyleLines, parseStyleBlock, styleBlockReport, stripStyleBlock } from '../src/style-append.js';
 import { extractPresetPrefix, locatePresetPromptBlock, presetPromptBlockers, presetPromptWarnings } from '../src/preset-prompt.js';
+
+
+// 从 npm/GitHub 装的人通常不在仓库目录里跑，`roles/xxx.md` 会指向他自己的 cwd。
+// 找不到就把文件名回落到包内 roles/ 目录 —— 否则 README 里那条示例命令必然失败。
+const PKG_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+function resolveCard(p) {
+  const raw = String(p ?? '');
+  if (!raw) return '';
+  if (fs.existsSync(raw)) return raw;
+  const bundled = path.join(PKG_ROOT, 'roles', path.basename(raw));
+  return fs.existsSync(bundled) ? bundled : raw;
+}
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -67,7 +80,7 @@ function main() {
   }
 
   if (cmd === 'check') {
-    const file = String(args._[1] ?? '');
+    const file = resolveCard(args._[1] ?? '');
     if (!file || !fs.existsSync(file)) {
       console.error(`用法：persona check <card.md>（找不到 ${file || '空路径'}）`);
       return 2;
@@ -105,7 +118,7 @@ function main() {
   }
 
   if (cmd === 'compose') {
-    const file = String(args._[1] ?? '');
+    const file = resolveCard(args._[1] ?? '');
     if (!file || !fs.existsSync(file)) {
       console.error('用法：persona compose <card.md> [--mode v1|v2]');
       return 2;
@@ -121,7 +134,7 @@ function main() {
   }
 
   if (cmd === 'style') {
-    const file = String(args._[1] ?? '');
+    const file = resolveCard(args._[1] ?? '');
     if (!file || !fs.existsSync(file)) {
       console.error('用法：persona style <card.md> [--show|--add "..." [--write]]');
       return 2;
@@ -162,7 +175,7 @@ function main() {
   }
 
   if (cmd === 'preset') {
-    const file = String(args._[1] ?? '');
+    const file = resolveCard(args._[1] ?? '');
     if (!file || !fs.existsSync(file)) {
       console.error('用法：persona preset <agent.cordis.yml> [--preset v1|v2]');
       return 2;
