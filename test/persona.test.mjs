@@ -67,6 +67,16 @@ test('roleCharStats / roleSectionReport：统计能对上，报告标出注入�
   assert.equal(report.find((r) => r.heading === '表情包体系').injected, true);
 });
 
+test('parseRoleSections：CRLF 人格卡也能认出模式标记（Windows 上编辑过的卡）', () => {
+  const crlf = card.replace(/\n/g, '\r\n');
+  const sections = parseRoleSections(crlf);
+  const pack = sections.find((s) => s.heading === '表情包体系');
+  assert.ok(pack, 'CRLF 下标题尾部不能残留 \\r，否则模式标记会失效');
+  assert.equal(pack.mode, 'v2');
+  assert.equal(sections.find((s) => s.heading === '分条方式').mode, 'v1');
+  assert.equal(selectRoleText(crlf, 'v2').includes('\r'), false);
+});
+
 test('GEN1_ROLE_LINE_RE：能抓出一代遗留指令', () => {
   assert.ok(GEN1_ROLE_LINE_RE.test('不想说话就输出 [SILENT]'));
   assert.ok(GEN1_ROLE_LINE_RE.test('用空格分条'));

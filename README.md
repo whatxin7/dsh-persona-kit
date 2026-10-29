@@ -1,4 +1,4 @@
-# dsh-persona-kit
+﻿# dsh-persona-kit
 
 > **一句话**：人格卡不是一段提示词，是一份**有结构的文件** —— 分小节、按仿真模式取用、自动长出来的语气只能进附录、改预设提示词要过安全不变量校验。
 >
@@ -17,7 +17,7 @@
 ## 安装
 
 ```bash
-git clone https://github.com/Derpyu520/dsh-persona-kit.git
+git clone https://github.com/whatxin7/dsh-persona-kit.git
 cd dsh-persona-kit
 npm install        # 只有一个依赖：js-yaml
 npm test           # 11 个用例
@@ -146,13 +146,13 @@ if (!added.ok) console.warn(added.reason);
 | 项目 | 对应成本条目 |
 |---|---|
 | **dsh-persona-kit**（本仓库） | 人格 / 角色卡 |
-| [dsh-token-meter](https://github.com/Derpyu520/dsh-token-meter) | 用量与成本核算 |
-| [dsh-qq-access](https://github.com/Derpyu520/dsh-qq-access) | 好友 / 白名单 / 权限 |
-| [dsh-qq-voice](https://github.com/Derpyu520/dsh-qq-voice) | 语音 / 唱歌 / 音色 |
-| [dsh-qq-stickers](https://github.com/Derpyu520/dsh-qq-stickers) | 表情包 / 斗图 |
-| [dsh-mcp-safe-tools](https://github.com/Derpyu520/dsh-mcp-safe-tools) | 能力扩展（视觉 / 搜索 / 语感） |
-| [dsh-session-link](https://github.com/Derpyu520/dsh-session-link) | 联通会话 / 行为调优 |
-| [qq-bridge](https://github.com/Derpyu520/qq-bridge) | 桥接内核（旗舰仓库） |
+| [dsh-token-meter](https://github.com/whatxin7/dsh-token-meter) | 用量与成本核算 |
+| [dsh-qq-access](https://github.com/whatxin7/dsh-qq-access) | 好友 / 白名单 / 权限 |
+| [dsh-qq-voice](https://github.com/whatxin7/dsh-qq-voice) | 语音 / 唱歌 / 音色 |
+| [dsh-qq-stickers](https://github.com/whatxin7/dsh-qq-stickers) | 表情包 / 斗图 |
+| [dsh-mcp-safe-tools](https://github.com/whatxin7/dsh-mcp-safe-tools) | 能力扩展（视觉 / 搜索 / 语感） |
+| [dsh-session-link](https://github.com/whatxin7/dsh-session-link) | 联通会话 / 行为调优 |
+| [qq-bridge](https://github.com/whatxin7/qq-bridge) | 桥接内核（旗舰仓库） |
 
 ## English
 
@@ -160,4 +160,6 @@ A persona-card toolchain: mode-tagged sections so one card serves both simulatio
 
 ## License
 
-MIT © Derpyu520
+MIT © whatxin7
+
+

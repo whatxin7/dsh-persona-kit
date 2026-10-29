@@ -43,7 +43,9 @@ function stripModeTags(heading) {
 export function parseRoleSections(text) {
   const sections = [];
   let current = null;
-  for (const line of String(text ?? '').split('\n')) {
+  // 统一换行：Windows 上编辑的人格卡是 CRLF，按 '\n' 切开后每行尾部会留 '\r'，
+  // 于是 `〔二代〕` 变成 `〔二代〕\r`，模式标记静默失效（CI 在 windows runner 上实测到）。
+  for (const line of String(text ?? '').replace(/\r\n?/g, '\n').split('\n')) {
     const heading = /^(#{1,6})\s+(.*)$/.exec(line);
     if (!heading) {
       if (!current) {

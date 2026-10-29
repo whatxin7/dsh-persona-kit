@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "dsh-persona-kit",
   "version": "1.0.0",
   "private": false,
@@ -43,10 +43,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Derpyu520/dsh-persona-kit.git"
+    "url": "git+https://github.com/whatxin7/dsh-persona-kit.git"
   },
-  "homepage": "https://github.com/Derpyu520/dsh-persona-kit#readme",
+  "homepage": "https://github.com/whatxin7/dsh-persona-kit#readme",
   "bugs": {
-    "url": "https://github.com/Derpyu520/dsh-persona-kit/issues"
+    "url": "https://github.com/whatxin7/dsh-persona-kit/issues"
   }
 }
+
+

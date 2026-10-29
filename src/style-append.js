@@ -137,7 +137,7 @@ export function looksLikeRepeat(a, b) {
  *            beginLine: number, endLine: number, headingLine: number, headingOk: boolean}}
  */
 export function parseStyleBlock(text) {
-  const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n');
+  const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
   let beginLine = -1;
   let endLine = -1;
   let dupBegin = 0;
@@ -195,7 +195,7 @@ export function parseStyleBlock(text) {
 
 /** 剥掉附录块（连同块后可能留下的一个空行），给结构检查脚本用。 */
 export function stripStyleBlock(text) {
-  const src = String(text ?? '').replace(/\r\n/g, '\n');
+  const src = String(text ?? '').replace(/\r\n?/g, '\n');
   const block = parseStyleBlock(src);
   if (!block.present || block.broken) return src;
   const lines = src.split('\n');
