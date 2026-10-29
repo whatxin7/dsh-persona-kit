@@ -1,0 +1,52 @@
+{
+  "name": "dsh-persona-kit",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "license": "MIT",
+  "description": "人格卡工具链：按仿真模式选择小节、结构体检、受控追加「长出来的语气」、预设提示词校验与安全改写。",
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "persona",
+    "role-card",
+    "prompt",
+    "qq",
+    "chatbot"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "persona": "./bin/persona.mjs"
+  },
+  "exports": {
+    ".": "./src/role-card.js",
+    "./role": "./src/role-card.js",
+    "./style": "./src/style-append.js",
+    "./preset": "./src/preset-prompt.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "roles",
+    "studio",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node bin/persona.mjs check roles/example-companion.md"
+  },
+  "dependencies": {
+    "js-yaml": "^4.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Derpyu520/dsh-persona-kit.git"
+  },
+  "homepage": "https://github.com/Derpyu520/dsh-persona-kit#readme",
+  "bugs": {
+    "url": "https://github.com/Derpyu520/dsh-persona-kit/issues"
+  }
+}

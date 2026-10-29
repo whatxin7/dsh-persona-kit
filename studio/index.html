@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>人格调试台 · Persona Studio</title>
+<style>
+  :root { --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --line:#2b333d; --fg:#d7dee7; --dim:#8b98a7; --acc:#4e9fff; --ok:#3fb950; --warn:#d29922; --err:#f85149; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 "Microsoft YaHei UI","Segoe UI",sans-serif; background:var(--bg); color:var(--fg); height:100vh; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:14px; padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0; font-weight:600; }
+  .chip { font-size:12px; padding:2px 8px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); color:var(--dim); }
+  .chip.on { color:var(--ok); border-color:#1f4429; }
+  .chip.off { color:var(--err); border-color:#4a2020; }
+  main { flex:1; display:grid; grid-template-columns:250px 1fr 380px; min-height:0; }
+  .col { min-height:0; display:flex; flex-direction:column; border-right:1px solid var(--line); }
+  .col:last-child { border-right:none; }
+  .col-head { padding:8px 12px; font-size:12px; color:var(--dim); text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .list { overflow:auto; flex:1; }
+  .item { padding:8px 12px; cursor:pointer; border-bottom:1px solid #1e242c; font-size:13px; }
+  .item:hover { background:var(--panel2); }
+  .item.sel { background:#1d2b3f; border-left:2px solid var(--acc); }
+  .item small { display:block; color:var(--dim); font-size:11px; }
+  .editor-wrap { flex:1; display:flex; flex-direction:column; min-height:0; }
+  .toolbar { display:flex; gap:6px; padding:8px 10px; border-bottom:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+  button { background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:5px; padding:5px 10px; font-size:12px; cursor:pointer; }
+  button:hover { border-color:var(--acc); }
+  button.primary { background:#1f4d8a; border-color:#2d6cb5; }
+  button.danger { color:var(--err); }
+  input[type=text] { background:var(--panel2); border:1px solid var(--line); color:var(--fg); border-radius:5px; padding:5px 8px; font-size:12px; }
+  textarea { flex:1; width:100%; resize:none; border:none; outline:none; background:#0b0e12; color:#cfe3ff; padding:14px; font:13px/1.65 Consolas,"Cascadia Mono",monospace; }
+  .statusbar { padding:6px 12px; font-size:12px; color:var(--dim); border-top:1px solid var(--line); display:flex; gap:16px; flex-wrap:wrap; }
+  .statusbar b { color:var(--fg); font-weight:500; }
+  .tabs { display:flex; gap:4px; padding:8px; border-bottom:1px solid var(--line); }
+  .tabs button.active { background:#1d2b3f; border-color:var(--acc); color:#cfe3ff; }
+  pre { margin:0; padding:10px 12px; overflow:auto; font:12px/1.55 Consolas,monospace; color:#b9c8d8; white-space:pre-wrap; word-break:break-word; }
+  .hint { padding:10px 12px; font-size:12px; color:var(--dim); border-bottom:1px solid var(--line); }
+  .hint b { color:var(--warn); }
+  #toast { position:fixed; right:16px; bottom:16px; background:#1f2b3a; border:1px solid var(--line); padding:9px 14px; border-radius:6px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; max-width:50vw; }
+  #toast.show { opacity:1; }
+  #toast.err { border-color:#5a2323; color:#ffb4b4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>人格调试台</h1>
+  <span class="chip" id="chipBridge">桥接 …</span>
+  <span class="chip" id="chipMode">模式 …</span>
+  <span class="chip" id="chipOwner">管理员 …</span>
+  <span class="chip" id="chipAllow">白名单 …</span>
+  <span style="margin-left:auto;color:var(--dim);font-size:12px">改动即时写入桥接；人格提示词需重启 DSH 生效</span>
+</header>
+
+<main>
+  <div class="col">
+    <div class="tabs">
+      <button id="tabRoles" class="active">角色卡</button>
+      <button id="tabPrompt">人格提示词</button>
+    </div>
+    <div class="col-head"><span id="listTitle">角色卡</span><button id="btnNew" style="padding:2px 7px">新建</button></div>
+    <div class="list" id="list"></div>
+  </div>
+
+  <div class="col editor-wrap">
+    <div class="toolbar">
+      <span id="editing" style="color:var(--dim);font-size:12px;margin-right:auto">未选择</span>
+      <button class="primary" id="btnSave">保存</button>
+      <button id="btnRename">重命名</button>
+      <button class="danger" id="btnDelete">删除</button>
+      <button id="btnBackups">备份</button>
+    </div>
+    <textarea id="editor" spellcheck="false" placeholder="左侧选择一个角色卡，或点「新建」。"></textarea>
+    <div class="statusbar">
+      <span>字数 <b id="stChars">0</b></span>
+      <span>行数 <b id="stLines">0</b></span>
+      <span>提示 <b id="stWarn">-</b></span>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="col-head">当前生效预览（AI 实际看到）</div>
+    <div class="hint" id="previewHint">选择管理员私聊或群，查看它此刻拿到的角色/工具/唤醒状态。</div>
+    <div class="toolbar">
+      <input type="text" id="previewKey" style="flex:1" placeholder="private:3108054816" />
+      <button id="btnPreview">刷新</button>
+    </div>
+    <pre id="preview" style="flex:1">（未加载）</pre>
+    <div class="col-head">试听 · 本地 TTS（不发 QQ）</div>
+    <div class="hint" id="ttsHint">先点「自检」确认语音服务在跑；文字请短（一两句）。合成的音频只在这里播放，不占用 QQ 语音配额。</div>
+    <div class="toolbar">
+      <button id="btnTtsStatus">自检</button>
+      <button class="primary" id="btnTtsSpeak">合成试听</button>
+      <span id="ttsState" style="color:var(--dim);font-size:12px"></span>
+    </div>
+    <textarea id="ttsText" spellcheck="false" style="flex:none;height:62px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px" placeholder="今天天气不错，我们一起去海边走走吧。"></textarea>
+    <div style="padding:8px 12px;border-bottom:1px solid var(--line)">
+      <audio id="ttsAudio" controls style="width:100%;height:32px"></audio>
+    </div>
+    <div class="col-head">试唱 · 旋律 + RVC 变声（不发 QQ）</div>
+    <div class="hint">歌词会先被念出来，再按旋律改音高，最后用训好的 RVC 音色唱出来。渲染要十几秒到一两分钟；旋律全是公有领域素材，不需要下载商业歌曲。</div>
+    <div class="toolbar">
+      <button class="primary" id="btnSing">试唱</button>
+      <select id="singMelody" style="flex:none">
+        <option value="twinkle">小星星</option>
+        <option value="scale">音阶</option>
+        <option value="octave">八度</option>
+        <option value="hum">哼鸣</option>
+      </select>
+      <span id="singState" style="color:var(--dim);font-size:12px"></span>
+    </div>
+    <textarea id="singText" spellcheck="false" style="flex:none;height:52px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px" placeholder="啦 啦 啦 啦 啦 啦">啦 啦 啦 啦 啦 啦</textarea>
+    <div style="padding:8px 12px;border-bottom:1px solid var(--line)">
+      <audio id="singAudio" controls style="width:100%;height:32px"></audio>
+    </div>
+    <div class="col-head">试聊 · 按角色口吻发到我的 QQ（真实链路）</div>
+    <div class="hint">这里写一句「角色会怎么说话」，点发送后会真的出现在你 QQ 的私聊窗口里 —— 用来确认改完人格后它的语气/说话方式对不对。不走模型，不烧 token。</div>
+    <div class="toolbar">
+      <button class="primary" id="btnTrialText">发文字</button>
+      <button id="btnTrialVoice">发语音</button>
+      <span id="trialState" style="color:var(--dim);font-size:12px"></span>
+    </div>
+    <textarea id="trialText" spellcheck="false" style="flex:none;height:52px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px" placeholder="哟，今天怎么想起我来了？"></textarea>
+    <div class="col-head">快捷操作</div>
+    <div class="toolbar">
+      <button id="btnClause">注入「管理员跨会话授权」条款</button>
+    </div>
+    <div class="hint">这条条款是给人格提示词用的：<b>桥接侧已经放开</b>管理员私聊读/发白名单群，但人格提示词里的「群友没有管理权限」可能让模型自己拒绝。注入后<b>需重启 DSH</b>。</div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let tab = 'roles';
+let currentRole = null;
+let currentPreset = 'qq-chat-v2';
+let dirty = false;
+
+function toast(msg, isErr) {
+  const t = $('toast');
+  t.textContent = msg; t.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(t._h); t._h = setTimeout(() => { t.className = isErr ? 'err' : ''; }, 4000);
+}
+async function api(path, init) {
+  const res = await fetch(path, init);
+  return res.json();
+}
+function post(path, body) {
+  return api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body ?? {}) });
+}
+function markDirty(v) {
+  dirty = v;
+  $('editing').textContent = (tab === 'roles' ? (currentRole || '未选择') : currentPreset) + (v ? ' · 未保存' : '');
+}
+
+async function refreshInfo() {
+  const info = await api('/studio/info');
+  const setChip = (id, text, cls) => { const e = $(id); e.textContent = text; e.className = 'chip' + (cls ? ' ' + cls : ''); };
+  if (!info.bridgeUp) { setChip('chipBridge', '桥接离线', 'off'); return; }
+  setChip('chipBridge', '桥接在线', 'on');
+  setChip('chipMode', '模式 ' + (info.mode || '?'), '');
+  setChip('chipOwner', '管理员 ' + (info.ownerQQ || '未设'), info.ownerQQ ? 'on' : 'off');
+  const allow = info.allow || {};
+  setChip('chipAllow', '群 ' + ((allow.groups || []).join(',') || '无'), '');
+  if (info.ownerQQ) $('previewKey').placeholder = 'private:' + info.ownerQQ;
+}
+
+async function loadRoles() {
+  const j = await api('/api/roles');
+  const list = $('list');
+  list.innerHTML = '';
+  const summaries = j.summaries || [];
+  if (!summaries.length) { list.innerHTML = '<div class="item">（还没有角色卡）</div>'; return; }
+  for (const s of summaries) {
+    const d = document.createElement('div');
+    d.className = 'item' + (currentRole === s.name ? ' sel' : '');
+    d.innerHTML = `<div>${s.name}</div><small>${s.chars} 字 · 注入 ${s.injectedV2 ?? s.chars}${s.truncated ? ' · 被截断' : ''}${s.warnings ? ' · ' + s.warnings + ' 警告' : ''}</small>`;
+    d.onclick = () => openRole(s.name);
+    list.appendChild(d);
+  }
+}
+
+async function openRole(name) {
+  if (dirty && !confirm('当前有未保存的修改，仍要切换吗？')) return;
+  const j = await api('/api/roles/content?name=' + encodeURIComponent(name));
+  if (!j.ok) { toast('读取失败: ' + (j.error || '未知'), true); return; }
+  currentRole = name;
+  $('editor').value = j.content ?? '';
+  markDirty(false);
+  updateCounts();
+  await loadRoles();
+  $('btnRename').disabled = false; $('btnDelete').disabled = false;
+}
+
+async function openPrompt() {
+  const j = await api('/api/preset/sim-prompt?preset=' + encodeURIComponent(currentPreset));
+  if (!j.ok) { toast('读取失败: ' + (j.error || '未知'), true); return; }
+  $('editor').value = j.content ?? '';
+  markDirty(false);
+  updateCounts();
+}
+
+function updateCounts() {
+  const v = $('editor').value;
+  $('stChars').textContent = v.length;
+  $('stLines').textContent = v ? v.split('\n').length : 0;
+}
+
+$('tabRoles').onclick = async () => { tab = 'roles'; $('tabRoles').classList.add('active'); $('tabPrompt').classList.remove('active'); $('listTitle').textContent = '角色卡'; $('btnNew').style.display = ''; $('btnRename').style.display = ''; $('btnDelete').style.display = ''; await loadRoles(); };
+$('tabPrompt').onclick = async () => { tab = 'prompt'; $('tabPrompt').classList.add('active'); $('tabRoles').classList.remove('active'); $('listTitle').textContent = '人格提示词'; $('btnNew').style.display = 'none'; $('btnRename').style.display = 'none'; $('btnDelete').style.display = 'none'; $('list').innerHTML = ''; for (const p of ['qq-chat-v2', 'qq-chat']) { const d = document.createElement('div'); d.className = 'item' + (currentPreset === p ? ' sel' : ''); d.innerHTML = `<div>${p}</div><small>${p === 'qq-chat-v2' ? '二代仿真（当前在用）' : '一代 chat'}</small>`; d.onclick = async () => { currentPreset = p; await $('tabPrompt').onclick(); }; $('list').appendChild(d); } await openPrompt(); };
+
+$('editor').addEventListener('input', () => { markDirty(true); updateCounts(); });
+
+$('btnSave').onclick = async () => {
+  const content = $('editor').value;
+  let j;
+  if (tab === 'roles') {
+    if (!currentRole) { toast('先新建或选择一个角色卡', true); return; }
+    j = await post('/api/roles/update', { name: currentRole, content });
+  } else {
+    j = await post('/api/preset/sim-prompt', { preset: currentPreset, content });
+  }
+  if (!j.ok) { toast('保存失败: ' + (j.error || '未知'), true); return; }
+  markDirty(false);
+  const warns = (j.warnings || []).length;
+  toast(tab === 'roles' ? `已保存 ${currentRole}（${j.chars ?? content.length} 字${warns ? '，' + warns + ' 条警告' : ''}）` : `人格提示词已写入（${j.chars ?? content.length} 字${warns ? '，' + warns + ' 条警告' : ''}）—— 重启 DSH 后生效`);
+  if (tab === 'roles') await loadRoles();
+};
+
+$('btnNew').onclick = async () => {
+  const name = prompt('新角色卡名称（用作文件名，别带特殊符号）');
+  if (!name) return;
+  const j = await post('/api/roles/create', { name, content: `# 角色卡：${name}\n\n## 你是谁\n\n## 说话方式\n\n## 边界\n` });
+  if (!j.ok) { toast('创建失败: ' + (j.error || '未知'), true); return; }
+  await loadRoles(); await openRole(name);
+};
+
+$('btnRename').onclick = async () => {
+  if (!currentRole) return;
+  const to = prompt('重命名为', currentRole);
+  if (!to || to === currentRole) return;
+  const j = await post('/api/roles/rename', { from: currentRole, to });
+  if (!j.ok) { toast('重命名失败: ' + (j.error || '未知'), true); return; }
+  currentRole = j.role || to; await loadRoles(); toast('已重命名');
+};
+
+$('btnDelete').onclick = async () => {
+  if (!currentRole || !confirm(`删除角色卡「${currentRole}」？此操作不可撤销。`)) return;
+  const j = await post('/api/roles/delete', { name: currentRole });
+  if (!j.ok) { toast('删除失败: ' + (j.error || '未知'), true); return; }
+  currentRole = null; $('editor').value = ''; markDirty(false); await loadRoles(); toast('已删除');
+};
+
+$('btnBackups').onclick = async () => {
+  if (tab !== 'prompt') { toast('备份只对人格提示词有效', true); return; }
+  const j = await api('/api/preset/sim-prompt/backups?preset=' + encodeURIComponent(currentPreset));
+  const list = j.backups || [];
+  if (!list.length) { toast('还没有备份'); return; }
+  const pick = prompt('输入要回滚的备份文件名：\n' + list.map((b) => (b.file || b.name || b)).join('\n'));
+  if (!pick) return;
+  const r = await post('/api/preset/sim-prompt/restore', { preset: currentPreset, file: pick });
+  if (!r.ok) { toast('回滚失败: ' + (r.error || '未知'), true); return; }
+  await openPrompt(); toast('已回滚到 ' + pick + '（重启 DSH 生效）');
+};
+
+$('btnPreview').onclick = async () => {
+  const key = $('previewKey').value.trim() || $('previewKey').placeholder;
+  const j = await api('/studio/preview?key=' + encodeURIComponent(key));
+  $('preview').textContent = JSON.stringify(j, null, 2);
+};
+
+$('btnClause').onclick = async () => {
+  if (tab !== 'prompt') { await $('tabPrompt').onclick(); }
+  const j = await api('/api/preset/sim-prompt?preset=' + encodeURIComponent(currentPreset));
+  if (!j.ok) { toast('读取失败', true); return; }
+  let content = j.content || '';
+  if (content.includes('管理员跨会话授权')) { toast('已经注入过了'); return; }
+  const clause = `\n\n【管理员跨会话授权（规则 2 的例外）】当管理员本人（ownerQQ）在私聊里明确要求你“去某个白名单群里说句话”或“看看那个群在聊什么”时，这属于允许操作，不算群友越权：发言用 qq_send_message（key 传目标群、token 用你自己的会话令牌），读取用 qq_get_recent_messages / qq_get_unread_messages / qq_get_message_detail。桥接会校验白名单、频率与静默开关。除管理员本人的这类明确要求外，其余仍按规则 2 拒绝。`;
+  content = content.replace(/\s*$/, '') + clause;
+  const r = await post('/api/preset/sim-prompt', { preset: currentPreset, content });
+  if (!r.ok) { toast('写入失败: ' + (r.error || '未知'), true); return; }
+  $('editor').value = content; updateCounts(); markDirty(false);
+  toast('已注入并写入 —— 重启 DSH 后生效');
+};
+
+// —— 试听：本地 TTS ——
+async function refreshTtsStatus() {
+  try {
+    const j = await api('/studio/tts/status');
+    const parts = [];
+    parts.push(j.enabled ? 'TTS 配置: 开' : 'TTS 配置: 关');
+    parts.push(j.up ? '服务: 在线' : '服务: 离线（先启动本地 TTS 服务）');
+    parts.push(j.hasRef ? '参考音色: 有' : '参考音色: 缺');
+    parts.push('上限 ' + j.maxChars + ' 字');
+    $('ttsState').textContent = parts.join(' · ');
+    $('ttsState').style.color = (j.enabled && j.up && j.hasRef) ? 'var(--ok)' : 'var(--warn)';
+    return j;
+  } catch (error) {
+    $('ttsState').textContent = '自检失败: ' + (error?.message ?? error);
+    $('ttsState').style.color = 'var(--err)';
+    return null;
+  }
+}
+
+$('btnTtsStatus').onclick = () => { refreshTtsStatus(); toast('已自检'); };
+
+$('btnTtsSpeak').onclick = async () => {
+  const text = $('ttsText').value.trim() || $('ttsText').placeholder;
+  if (!text) { toast('先写一句要念的话', true); return; }
+  $('btnTtsSpeak').disabled = true;
+  $('ttsState').textContent = '合成中…（首次加载模型较慢）';
+  try {
+    const res = await fetch('/studio/tts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const j = await res.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    $('ttsAudio').src = url;
+    $('ttsAudio').play().catch(() => {});
+    toast('合成好了（' + Math.round(blob.size / 1024) + ' KB）');
+    $('ttsState').textContent = '合成成功 · ' + Math.round(blob.size / 1024) + ' KB';
+    $('ttsState').style.color = 'var(--ok)';
+  } catch (error) {
+    toast('试听失败: ' + (error?.message ?? error), true);
+    $('ttsState').textContent = '合成失败: ' + (error?.message ?? error);
+    $('ttsState').style.color = 'var(--err)';
+  } finally {
+    $('btnTtsSpeak').disabled = false;
+  }
+};
+
+$('btnSing').onclick = async () => {
+  const text = $('singText').value.trim() || $('singText').placeholder;
+  const melody = $('singMelody').value || 'twinkle';
+  if (!text) { toast('先写一句歌词', true); return; }
+  $('btnSing').disabled = true;
+  $('singState').textContent = '渲染中…（TTS + 旋律 + RVC，首次加载模型较慢）';
+  $('singState').style.color = 'var(--dim)';
+  try {
+    const res = await fetch('/studio/sing', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, melody })
+    });
+    if (!res.ok) {
+      let msg = 'HTTP ' + res.status;
+      try { const j = await res.json(); msg = j.error || msg; } catch {}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    $('singAudio').src = url;
+    $('singAudio').play().catch(() => {});
+    toast('唱好了（' + Math.round(blob.size / 1024) + ' KB）');
+    $('singState').textContent = '渲染成功 · ' + Math.round(blob.size / 1024) + ' KB';
+    $('singState').style.color = 'var(--ok)';
+  } catch (error) {
+    toast('试唱失败: ' + (error?.message ?? error), true);
+    $('singState').textContent = '渲染失败: ' + (error?.message ?? error);
+    $('singState').style.color = 'var(--err)';
+  } finally {
+    $('btnSing').disabled = false;
+  }
+};
+
+async function trial(voice) {
+  const text = $('trialText').value.trim() || $('trialText').placeholder;
+  if (!text) { toast('先写一句话', true); return; }
+  const btn = voice ? $('btnTrialVoice') : $('btnTrialText');
+  btn.disabled = true;
+  $('trialState').textContent = voice ? '合成并发送中…' : '发送中…';
+  $('trialState').style.color = 'var(--dim)';
+  try {
+    const res = await fetch('/studio/trial', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, voice })
+    });
+    const j = await res.json();
+    if (!res.ok || !j.ok) throw new Error(j.error || ('HTTP ' + res.status));
+    toast('已发到你的 QQ' + (j.detail ? '（' + j.detail + '）' : ''));
+    $('trialState').textContent = '已发送 · ' + (j.detail || ('messageId ' + j.messageId));
+    $('trialState').style.color = 'var(--ok)';
+  } catch (error) {
+    toast('试聊失败: ' + (error?.message ?? error), true);
+    $('trialState').textContent = '失败: ' + (error?.message ?? error);
+    $('trialState').style.color = 'var(--err)';
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('btnTrialText').onclick = () => trial(false);
+$('btnTrialVoice').onclick = () => trial(true);
+
+(async function init() {
+  await refreshInfo();
+  await loadRoles();
+  refreshTtsStatus();
+  fetch('/studio/sing/status').then((r) => r.json()).then((s) => {
+    if (!s.ok) return;
+    const bits = [];
+    bits.push(s.weight ? '音色 ' + s.weight : '还没有训练好的音色');
+    if (!s.hasPython) bits.push('RVC 环境缺失');
+    $('singState').textContent = bits.join(' · ');
+  }).catch(() => {});
+  $('btnRename').disabled = true; $('btnDelete').disabled = true;
+  setInterval(refreshInfo, 15000);
+})();
+</script>
+</body>
+</html>
